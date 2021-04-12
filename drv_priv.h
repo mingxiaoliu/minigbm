@@ -64,7 +64,9 @@ struct driver {
 	int fd;
 	const struct backend *backend;
 	void *priv;
+#ifndef DRV_MAGMA
 	void *buffer_table;
+#endif
 	struct drv_array *mappings;
 	struct drv_array *combos;
 	pthread_mutex_t driver_lock;

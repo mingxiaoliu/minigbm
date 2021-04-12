@@ -11,7 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
-#include <xf86drm.h>
 
 #include "drv.h"
 #include "gbm_helpers.h"

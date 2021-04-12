@@ -15,6 +15,7 @@ MINIGBM_SRC := \
 	exynos.c \
 	helpers_array.c \
 	helpers.c \
+	drm_helpers.c \
 	i915.c \
 	mediatek.c \
 	meson.c \

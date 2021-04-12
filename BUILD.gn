@@ -1,0 +1,45 @@
+# Copyright 2021 The Fuchsia Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+config("gbm_config") {
+  include_dirs = [ "." ]
+}
+
+group("minigbm") {
+  public_deps = [ ":gbm" ]
+  public_configs = [ ":gbm_config" ]
+}
+
+shared_library("gbm") {
+  sources = [
+    "drv.c",
+    "drv.h",
+    "gbm.h",
+    "gbm.c",
+    "gbm_helpers.c",
+    "gbm_helpers.h",
+    "helpers.h",
+    "helpers.c",
+    "helpers_array.c",
+    "helpers_array.h",
+    "magma.c",
+  ]
+  defines = [ "DRV_MAGMA=1" ]
+  deps = [
+    "//third_party/mesa/include:drm-uapi",
+    "//src/graphics/lib/magma/src/libmagma_linux",
+  ]
+  configs += [ "//build/config:Wno-conversion" ]
+  cflags = [ "-Wno-incompatible-pointer-types-discards-qualifiers" ]
+}
+
+executable("gbm_test") {
+  testonly = true
+  sources = [ "test_magma.cc" ]
+  deps = [
+    ":gbm",
+    "//src/lib/fxl/test:gtest_main",
+    "//third_party/mesa/include:drm-uapi",
+  ]
+}

@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <libgen.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -14,7 +15,10 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#ifndef DRV_MAGMA
 #include <xf86drm.h>
+#endif
 
 #ifdef __ANDROID__
 #include <cutils/log.h>
@@ -46,6 +50,9 @@ extern const struct backend backend_rockchip;
 #ifdef DRV_VC4
 extern const struct backend backend_vc4;
 #endif
+#ifdef DRV_MAGMA
+extern const struct backend backend_magma;
+#endif
 
 // Dumb / generic drivers
 extern const struct backend backend_evdi;
@@ -61,6 +68,9 @@ extern const struct backend backend_vkms;
 
 static const struct backend *drv_get_backend(int fd)
 {
+#ifdef DRV_MAGMA
+	return &backend_magma;
+#else
 	drmVersionPtr drm_version;
 	unsigned int i;
 
@@ -106,6 +116,7 @@ static const struct backend *drv_get_backend(int fd)
 
 	drmFreeVersion(drm_version);
 	return NULL;
+#endif
 }
 
 struct driver *drv_create(int fd)
@@ -131,9 +142,11 @@ struct driver *drv_create(int fd)
 	if (pthread_mutex_init(&drv->driver_lock, NULL))
 		goto free_driver;
 
+#ifndef DRV_MAGMA
 	drv->buffer_table = drmHashCreate();
 	if (!drv->buffer_table)
 		goto free_lock;
+#endif
 
 	drv->mappings = drv_array_init(sizeof(struct mapping));
 	if (!drv->mappings)
@@ -156,8 +169,10 @@ struct driver *drv_create(int fd)
 free_mappings:
 	drv_array_destroy(drv->mappings);
 free_buffer_table:
+#ifndef DRV_MAGMA
 	drmHashDestroy(drv->buffer_table);
 free_lock:
+#endif
 	pthread_mutex_destroy(&drv->driver_lock);
 free_driver:
 	free(drv);
@@ -171,7 +186,9 @@ void drv_destroy(struct driver *drv)
 	if (drv->backend->close)
 		drv->backend->close(drv);
 
+#ifndef DRV_MAGMA
 	drmHashDestroy(drv->buffer_table);
+#endif
 	drv_array_destroy(drv->mappings);
 	drv_array_destroy(drv->combos);
 
@@ -381,7 +398,11 @@ struct bo *drv_bo_import(struct driver *drv, struct drv_import_fd_data *data)
 	}
 
 	bo->meta.format_modifier = data->format_modifier;
-	for (plane = 0; plane < bo->meta.num_planes; plane++) {
+
+	if (bo->meta.total_size && bo->meta.num_planes == 1) {
+		bo->meta.sizes[0] = bo->meta.total_size;
+	}
+	else for (plane = 0; plane < bo->meta.num_planes; plane++) {
 		bo->meta.strides[plane] = data->strides[plane];
 		bo->meta.offsets[plane] = data->offsets[plane];
 
@@ -585,6 +606,7 @@ union bo_handle drv_bo_get_plane_handle(struct bo *bo, size_t plane)
 #define DRM_RDWR O_RDWR
 #endif
 
+#ifndef DRV_MAGMA
 int drv_bo_get_plane_fd(struct bo *bo, size_t plane)
 {
 
@@ -605,6 +627,7 @@ int drv_bo_get_plane_fd(struct bo *bo, size_t plane)
 
 	return (ret) ? ret : fd;
 }
+#endif
 
 uint32_t drv_bo_get_plane_offset(struct bo *bo, size_t plane)
 {
