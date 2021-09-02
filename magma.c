@@ -81,7 +81,7 @@ static int bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t fo
 		.height = height,
 		.drm_format = format,
 		.flags =
-		    (use_flags == GBM_BO_USE_SCANOUT) ? MAGMA_IMAGE_CREATE_FLAGS_PRESENTABLE : 0,
+		    (use_flags & GBM_BO_USE_SCANOUT) ? MAGMA_IMAGE_CREATE_FLAGS_PRESENTABLE : 0,
 	};
 
 	if (use_flags & GBM_BO_USE_LINEAR) {
