@@ -11,6 +11,13 @@ group("minigbm") {
   public_configs = [ ":gbm_config" ]
 }
 
+config("internal_config") {
+  cflags = [
+    "-Wno-conversion",
+    "-Wno-unused-but-set-variable"
+  ]
+}
+
 shared_library("gbm") {
   sources = [
     "drv.c",
@@ -30,7 +37,7 @@ shared_library("gbm") {
     "//third_party/mesa/include:drm-uapi",
     "//src/graphics/lib/magma/src/libmagma_linux",
   ]
-  configs += [ "//build/config:Wno-conversion" ]
+  configs += [ ":internal_config" ]
   cflags = [ "-Wno-incompatible-pointer-types-discards-qualifiers" ]
 }
 
