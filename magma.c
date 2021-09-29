@@ -164,7 +164,7 @@ void *magma_bo_map(struct bo *bo, struct vma *vma, size_t plane, uint32_t map_fl
 	magma_buffer_t image = bo->handles[0].u64;
 
 	magma_handle_t handle;
-	magma_status_t status = magma_get_buffer_handle(get_connection(bo->drv), image, &handle);
+	magma_status_t status = magma_get_buffer_handle2(image, &handle);
 	if (status != MAGMA_STATUS_OK) {
 		LOG_VERBOSE("magma_get_buffer_handle failed: %d", status);
 		return MAP_FAILED;
