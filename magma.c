@@ -153,8 +153,25 @@ int magma_bo_import(struct bo *bo, struct drv_import_fd_data *data)
 		return -EINVAL;
 	}
 
-	bo->handles[0].u64 = image;
+	magma_image_info_t info;
+	status = magma_virt_get_image_info(get_connection(bo->drv), image, &info);
+	if (status != MAGMA_STATUS_OK) {
+		LOG_VERBOSE("magma_virt_get_image_info failed: %d", status);
+		return -EINVAL;
+	}
+
+	// In the case of gbm_bo_import:
+	// - if no modifier is provided, provide the actual modifier
+	// - if no stride is provided, provide the actual stride
+	if (data->format_modifier == DRM_FORMAT_MOD_INVALID) {
+		// This is used by the caller to set bo->meta.format_modifier
+		data->format_modifier = info.drm_format_modifier;
+	}
+	if (data->strides[0] == 0) {
+		data->strides[0] = info.plane_strides[0];
+	}
 	bo->meta.total_size = magma_get_buffer_size(image);
+	bo->handles[0].u64 = image;
 
 	return 0;
 }

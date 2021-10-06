@@ -71,7 +71,7 @@ TEST_F(MagmaGbmTest, CreateLinear)
 	std::vector<uint64_t> modifiers{ DRM_FORMAT_MOD_LINEAR };
 	struct gbm_bo *bo =
 	    gbm_bo_create_with_modifiers(device(), kDefaultWidth, kDefaultHeight, kDefaultFormat,
-					 modifiers.data(), modifiers.size());
+					 modifiers.data(), static_cast<uint32_t>(modifiers.size()));
 	ASSERT_TRUE(bo);
 	EXPECT_EQ(DRM_FORMAT_MOD_LINEAR, gbm_bo_get_modifier(bo));
 	gbm_bo_destroy(bo);
@@ -82,7 +82,7 @@ TEST_F(MagmaGbmTest, CreateIntelX)
 	std::vector<uint64_t> modifiers{ I915_FORMAT_MOD_X_TILED };
 	struct gbm_bo *bo =
 	    gbm_bo_create_with_modifiers(device(), kDefaultWidth, kDefaultHeight, kDefaultFormat,
-					 modifiers.data(), modifiers.size());
+					 modifiers.data(), static_cast<uint32_t>(modifiers.size()));
 	ASSERT_TRUE(bo);
 	EXPECT_EQ(I915_FORMAT_MOD_X_TILED, gbm_bo_get_modifier(bo));
 	gbm_bo_destroy(bo);
@@ -93,7 +93,7 @@ TEST_F(MagmaGbmTest, CreateIntelY)
 	std::vector<uint64_t> modifiers{ I915_FORMAT_MOD_Y_TILED };
 	struct gbm_bo *bo =
 	    gbm_bo_create_with_modifiers(device(), kDefaultWidth, kDefaultHeight, kDefaultFormat,
-					 modifiers.data(), modifiers.size());
+					 modifiers.data(), static_cast<uint32_t>(modifiers.size()));
 	ASSERT_TRUE(bo);
 	EXPECT_EQ(I915_FORMAT_MOD_Y_TILED, gbm_bo_get_modifier(bo));
 	gbm_bo_destroy(bo);
@@ -105,7 +105,7 @@ TEST_F(MagmaGbmTest, CreateIntelBest)
 					 I915_FORMAT_MOD_Y_TILED };
 	struct gbm_bo *bo =
 	    gbm_bo_create_with_modifiers(device(), kDefaultWidth, kDefaultHeight, kDefaultFormat,
-					 modifiers.data(), modifiers.size());
+					 modifiers.data(), static_cast<uint32_t>(modifiers.size()));
 	ASSERT_TRUE(bo);
 	EXPECT_EQ(I915_FORMAT_MOD_Y_TILED, gbm_bo_get_modifier(bo));
 	gbm_bo_destroy(bo);
@@ -153,40 +153,106 @@ TEST_P(MagmaGbmTestWithUsage, Import)
 		gbm_bo_unmap(bo, map_data);
 	}
 
-	struct gbm_import_fd_data import;
-	import.fd = gbm_bo_get_fd(bo);
-	import.width = gbm_bo_get_width(bo);
-	import.height = gbm_bo_get_height(bo);
-	import.stride = gbm_bo_get_stride(bo);
-	import.format = gbm_bo_get_format(bo);
-	EXPECT_GE(import.fd, 0);
-	EXPECT_EQ(import.width, kDefaultWidth);
-	EXPECT_EQ(import.height, kDefaultHeight);
-	EXPECT_EQ(import.format, kDefaultFormat);
-
-	struct gbm_bo *bo2 = gbm_bo_import(gbm2.device(), GBM_BO_IMPORT_FD, &import, GetParam());
-	ASSERT_TRUE(bo2);
-
 	{
-		uint32_t stride;
-		void *map_data;
-		void *addr = gbm_bo_map(bo2, 0, 0, kDefaultWidth, kDefaultHeight,
-					GBM_BO_TRANSFER_READ, &stride, &map_data);
-		ASSERT_NE(addr, MAP_FAILED);
-		EXPECT_EQ(*reinterpret_cast<uint32_t *>(addr), kPattern);
-		gbm_bo_unmap(bo, map_data);
+		// Import with specified stride (could be incorrect)
+		constexpr uint32_t kImportStride = 123;
+		// Import usage doesn't matter
+		constexpr uint32_t kImportUsage = GBM_BO_USE_RENDERING;
+		struct gbm_import_fd_data import;
+		import.fd = gbm_bo_get_fd(bo);
+		import.format = gbm_bo_get_format(bo);
+		import.width = gbm_bo_get_width(bo);
+		import.height = gbm_bo_get_height(bo);
+		import.stride = kImportStride;
+		EXPECT_GE(import.fd, 0);
+		EXPECT_EQ(import.width, kDefaultWidth);
+		EXPECT_EQ(import.height, kDefaultHeight);
+		EXPECT_EQ(import.format, kDefaultFormat);
+
+		struct gbm_bo *bo2 =
+		    gbm_bo_import(gbm2.device(), GBM_BO_IMPORT_FD, &import, kImportUsage);
+		ASSERT_TRUE(bo2);
+
+		EXPECT_EQ(gbm_bo_get_width(bo), gbm_bo_get_width(bo2));
+		EXPECT_EQ(gbm_bo_get_height(bo), gbm_bo_get_height(bo2));
+		EXPECT_EQ(kImportStride, gbm_bo_get_stride(bo2));
+		EXPECT_EQ(gbm_bo_get_format(bo), gbm_bo_get_format(bo2));
+		EXPECT_EQ(gbm_bo_get_modifier(bo), gbm_bo_get_modifier(bo2));
+		EXPECT_NE(DRM_FORMAT_MOD_INVALID, gbm_bo_get_modifier(bo2));
+
+		{
+			uint32_t stride;
+			void *map_data;
+			void *addr = gbm_bo_map(bo2, 0, 0, kDefaultWidth, kDefaultHeight,
+						GBM_BO_TRANSFER_READ, &stride, &map_data);
+			ASSERT_NE(addr, MAP_FAILED);
+			EXPECT_EQ(*reinterpret_cast<uint32_t *>(addr), kPattern);
+			gbm_bo_unmap(bo, map_data);
+		}
+
+		gbm_bo_destroy(bo2);
+	}
+	{
+		// Import with 0 stride
+		constexpr uint32_t kImportStride = 0;
+		// Import usage doesn't matter
+		constexpr uint32_t kImportUsage = GBM_BO_USE_RENDERING;
+		struct gbm_import_fd_data import;
+		import.format = gbm_bo_get_format(bo);
+		import.fd = gbm_bo_get_fd(bo);
+		import.width = gbm_bo_get_width(bo);
+		import.height = gbm_bo_get_height(bo);
+		import.stride = kImportStride;
+		EXPECT_GE(import.fd, 0);
+		EXPECT_EQ(import.width, kDefaultWidth);
+		EXPECT_EQ(import.height, kDefaultHeight);
+		EXPECT_EQ(import.format, kDefaultFormat);
+
+		struct gbm_bo *bo2 =
+		    gbm_bo_import(gbm2.device(), GBM_BO_IMPORT_FD, &import, kImportUsage);
+		ASSERT_TRUE(bo2);
+
+		EXPECT_EQ(gbm_bo_get_width(bo), gbm_bo_get_width(bo2));
+		EXPECT_EQ(gbm_bo_get_height(bo), gbm_bo_get_height(bo2));
+		EXPECT_EQ(gbm_bo_get_stride(bo), gbm_bo_get_stride(bo2));
+		EXPECT_EQ(gbm_bo_get_format(bo), gbm_bo_get_format(bo2));
+		EXPECT_EQ(gbm_bo_get_modifier(bo), gbm_bo_get_modifier(bo2));
+		EXPECT_NE(DRM_FORMAT_MOD_INVALID, gbm_bo_get_modifier(bo2));
+
+		{
+			uint32_t stride;
+			void *map_data;
+			void *addr = gbm_bo_map(bo2, 0, 0, kDefaultWidth, kDefaultHeight,
+						GBM_BO_TRANSFER_READ, &stride, &map_data);
+			ASSERT_NE(addr, MAP_FAILED);
+			EXPECT_EQ(*reinterpret_cast<uint32_t *>(addr), kPattern);
+			gbm_bo_unmap(bo, map_data);
+		}
+
+		gbm_bo_destroy(bo2);
 	}
 
 	gbm_bo_destroy(bo);
-	gbm_bo_destroy(bo2);
 
 	gbm2.TearDown();
 }
 
-INSTANTIATE_TEST_SUITE_P(MagmaGbmTestWithUsage, MagmaGbmTestWithUsage,
-			 ::testing::Values(GBM_BO_USE_RENDERING,
-					   GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR,
-					   GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT,
-					   GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR |
-					       GBM_BO_USE_SCANOUT,
-					   GBM_BO_USE_LINEAR));
+INSTANTIATE_TEST_SUITE_P(
+    MagmaGbmTestWithUsage, MagmaGbmTestWithUsage,
+    ::testing::Values(GBM_BO_USE_RENDERING, GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR,
+		      GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT,
+		      GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR | GBM_BO_USE_SCANOUT,
+		      GBM_BO_USE_LINEAR),
+    [](testing::TestParamInfo<MagmaGbmTestWithUsage::ParamType> info) {
+	    if (info.param == GBM_BO_USE_RENDERING)
+		    return "GBM_BO_USE_RENDERING";
+	    if (info.param == (GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR))
+		    return "GBM_BO_USE_RENDERING_GBM_BO_USE_LINEAR";
+	    if (info.param == (GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT))
+		    return "GBM_BO_USE_RENDERING_GBM_BO_USE_SCANOUT";
+	    if (info.param == (GBM_BO_USE_RENDERING | GBM_BO_USE_LINEAR | GBM_BO_USE_SCANOUT))
+		    return "GBM_BO_USE_RENDERING_GBM_BO_USE_LINEAR_GBM_BO_USE_SCANOUT";
+	    if (info.param == GBM_BO_USE_LINEAR)
+		    return "GBM_BO_USE_LINEAR";
+	    return "Unknown";
+    });

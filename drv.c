@@ -401,6 +401,7 @@ struct bo *drv_bo_import(struct driver *drv, struct drv_import_fd_data *data)
 
 	if (bo->meta.total_size && bo->meta.num_planes == 1) {
 		bo->meta.sizes[0] = bo->meta.total_size;
+		bo->meta.strides[0] = data->strides[0];
 	}
 	else for (plane = 0; plane < bo->meta.num_planes; plane++) {
 		bo->meta.strides[plane] = data->strides[plane];
