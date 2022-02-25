@@ -41,9 +41,7 @@ class cros_gralloc_driver
 
 	uint32_t get_resolved_drm_format(uint32_t drm_format, uint64_t use_flags);
 
-	void with_buffer(cros_gralloc_handle_t hnd,
-			 const std::function<void(cros_gralloc_buffer *)> &function);
-	void with_each_buffer(const std::function<void(cros_gralloc_buffer *)> &function);
+	void for_each_handle(const std::function<void(cros_gralloc_handle_t)> &function);
 
       private:
 	cros_gralloc_driver();
