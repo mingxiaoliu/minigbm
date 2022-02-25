@@ -53,7 +53,7 @@ Error CrosGralloc4Allocator::allocate(const BufferDescriptorInfo& descriptor, ui
         return Error::UNSUPPORTED;
     }
 
-    native_handle_t* handle;
+    buffer_handle_t handle;
     int ret = mDriver->allocate(&crosDescriptor, &handle);
     if (ret) {
         return Error::NO_RESOURCES;
@@ -64,7 +64,7 @@ Error CrosGralloc4Allocator::allocate(const BufferDescriptorInfo& descriptor, ui
         return Error::NO_RESOURCES;
     }
 
-    outHandle->setTo(handle, /*shouldOwn=*/true);
+    *outHandle = handle;
     *outStride = crosHandle->pixel_stride;
 
     return Error::NONE;
