@@ -8,7 +8,6 @@
 #include <android/hardware/graphics/mapper/4.0/IMapper.h>
 
 #include "cros_gralloc/cros_gralloc_driver.h"
-#include "cros_gralloc/gralloc4/CrosGralloc4Metadata.h"
 
 class CrosGralloc4Allocator : public android::hardware::graphics::allocator::V4_0::IAllocator {
   public:
@@ -20,9 +19,6 @@ class CrosGralloc4Allocator : public android::hardware::graphics::allocator::V4_
     android::hardware::graphics::mapper::V4_0::Error init();
 
   private:
-    android::hardware::graphics::mapper::V4_0::Error initializeMetadata(
-            cros_gralloc_handle_t crosHandle);
-
     android::hardware::graphics::mapper::V4_0::Error allocate(
             const android::hardware::graphics::mapper::V4_0::IMapper::BufferDescriptorInfo&
                     description,

@@ -43,8 +43,7 @@ class cros_gralloc_buffer
 	int32_t invalidate();
 	int32_t flush();
 
-	int32_t get_reserved_region(void **reserved_region_addr,
-				    uint64_t *reserved_region_size) const;
+	int32_t get_reserved_region(void **reserved_region_addr, uint64_t *reserved_region_size);
 
       private:
 	cros_gralloc_buffer(struct bo *acquire_bo, struct cros_gralloc_handle *acquire_handle);
@@ -63,7 +62,7 @@ class cros_gralloc_buffer
 	struct mapping *lock_data_[DRV_MAX_PLANES];
 
 	/* Optional additional shared memory region attached to some gralloc buffers. */
-	mutable void *reserved_region_addr_ = nullptr;
+	void *reserved_region_addr_ = nullptr;
 };
 
 #endif
